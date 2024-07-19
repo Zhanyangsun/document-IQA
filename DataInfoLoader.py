@@ -1,36 +1,44 @@
 import pandas as pd
-import numpy as np
+import json
 import yaml
+import os
 
 class DataInfoLoader:
-    def __init__(self,dataset_name,config):
-        self.config=config
-        self.dataset_name=dataset_name
-        self.img_num=len(pd.read_excel(config[dataset_name]['gt_file_path'])['img_name'])
-        self.IQA_results_path=config[dataset_name]['IQA_results_path']
-    
+    def __init__(self, dataset_name, config):
+        self.config = config
+        self.dataset_name = dataset_name
+
+        # Load ground truth data from the specified file
+        gt_file_path = config[dataset_name]['gt_file_path']
+        with open(gt_file_path, 'r') as f:
+            self.gt_data = json.load(f)
+
+        self.img_num = len(self.gt_data)
+        self.IQA_results_path = config[dataset_name]['IQA_results_path']
+
     def get_qs_std(self):
         """Standard ground truth quality score of all images
-        
+
         Returns:
-        - pandas.Series store the GT for all images
+        - pandas.Series storing the GT for all images
         """
-        return pd.read_excel(self.config[self.dataset_name]['gt_file_path'])['acc_avg']
+        return pd.Series([item['distortion_level'] for item in self.gt_data])
 
     def get_img_name(self):
-        return pd.read_excel(self.config[self.dataset_name]['gt_file_path'])['img_name']
-    
+        return pd.Series([item['image'] for item in self.gt_data])
+
     def get_img_set(self):
-        return pd.read_excel(self.config[self.dataset_name]['gt_file_path'])['img_set']
+        return pd.Series([self.dataset_name] * self.img_num)
 
     def get_img_path(self):
-        "Get the image path for all images"
-        return [self.config[self.dataset_name]['root']+'/'+name for name in self.get_img_name()]
+        """Get the image path for all images"""
+        return pd.Series([os.path.join(self.config[self.dataset_name]['root'], 'optical_problems_contrast_change', item['image']) for item in self.gt_data])
 
-if __name__=='__main__':
+if __name__ == '__main__':
     with open('./config.yaml') as f:
-        config=yaml.load(f)
-    dataset_name='SOC'
-    dil=DataInfoLoader(dataset_name,config)
-    img_name=dil.get_img_name()
+        config = yaml.safe_load(f)
+    dataset_name = 'SOC'
+    dil = DataInfoLoader(dataset_name, config)
+    img_name = dil.get_img_name()
     print(img_name[2])
+
