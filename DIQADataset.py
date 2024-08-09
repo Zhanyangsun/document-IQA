@@ -9,7 +9,7 @@ from DataInfoLoader import DataInfoLoader
 def default_loader(path):
     return Image.open(path).convert('L')
 
-def patchSifting(im, patch_size=48, stride=48):
+def patchSifting(im, patch_size=250, stride=250):
     img = np.array(im).copy()
 
     if not img.flags.writeable:
@@ -32,8 +32,6 @@ def judgeAllOnesOrAllZeros(patch):
 class DIQADataset(Dataset):
     def __init__(self, dataset_name, config, data_index, status='train', loader=default_loader):
         self.loader = loader
-        self.patch_size = 48
-        self.stride = 48
         dil = DataInfoLoader(dataset_name, config)
         img_name = dil.get_img_name()
         img_path = dil.get_img_path()
@@ -52,12 +50,12 @@ class DIQADataset(Dataset):
             patches = patchSifting(im)
             if status == 'train':
                 self.patches.extend(patches)
-                self.label.extend([torch.tensor(qs_std[idx], dtype=torch.float32)] * len(patches))
+                self.label.extend([torch.tensor(qs_std[idx], dtype=torch.float32).view(1)] * len(patches))
             else:
-                self.patches.append(torch.stack(patches))
-                self.label.append(torch.tensor(qs_std[idx], dtype=torch.float32))
+                self.patches.extend(patches)
+                self.label.extend([torch.tensor(qs_std[idx], dtype=torch.float32).view(1)] * len(patches))
 
-        if status == 'train':
+        if status == 'train' or status == 'val' or status == 'test':
             print(f"Total Patches: {len(self.patches)}")
             print(f"Total Labels: {len(self.label)}")
             if len(self.patches) > 0:
@@ -70,7 +68,5 @@ class DIQADataset(Dataset):
 
     def __getitem__(self, idx):
         patch, label = self.patches[idx], self.label[idx]
+        # print(f"__getitem__: patch shape: {patch.shape}, label shape: {label.shape}")  # Debug statement
         return patch, label
-
-if __name__ == '__main__':
-    pass

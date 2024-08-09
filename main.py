@@ -16,23 +16,18 @@ from DataInfoLoader import DataInfoLoader
 import math
 from ignite.contrib.handlers import ProgressBar
 
-
 def ensure_dir(path):
     p = Path(path)
     if not p.exists():
         p.mkdir()
 
-
 def custom_loss_fn(y_pred, y):
-    loss = 0
-    loss += F.mse_loss(y_pred[:, 0], y[:, 0])
-    loss += F.mse_loss(y_pred[:, 1], y[:, 1])
-    return loss
-
+    """Custom loss function for a single noise ground truth"""
+    return F.mse_loss(y_pred, y)  # Use MSE loss for single entry
 
 def loss_fn(y_pred, y):
     y = y.view_as(y_pred)  # Reshape target to match prediction
-    return custom_loss_fn(y_pred, y)  # Use MSE loss
+    return custom_loss_fn(y_pred, y)  # Use the custom loss function
 
 
 def get_data_loaders(dataset_name, config, train_batch_size):
@@ -60,7 +55,6 @@ def get_data_loaders(dataset_name, config, train_batch_size):
         return train_loader, val_loader, test_loader
     return train_loader, val_loader
 
-
 class Solver:
     def __init__(self):
         self.model = CNNDIQAnet()
@@ -85,7 +79,7 @@ class Solver:
         best_criterion = float('inf')  # Initialize with infinity for MSE
         trainer = create_supervised_trainer(self.model, optimizer, loss_fn, device=device)
 
-        evaluator = create_supervised_evaluator(self.model, metrics={'MSE': DIQAPerformance()}, device=device)
+        evaluator = create_supervised_evaluator(self.model, metrics={'MSE': MeanSquaredError()}, device=device)
 
         pbar = ProgressBar()
         pbar.attach(trainer, output_transform=lambda x: {'loss': x})
@@ -128,20 +122,19 @@ class Solver:
 
         trainer.run(train_loader, max_epochs=epochs)
 
-
 if __name__ == "__main__":
     parser = ArgumentParser(description='PyTorch CNNDIQA')
-    parser.add_argument('--batch_size', type=int, default=32,
+    parser.add_argument('--batch_size', type=int, default=128,
                         help='input batch size for training (default: 128)')
-    parser.add_argument('--epochs', type=int, default=100,
+    parser.add_argument('--epochs', type=int, default=75,
                         help='number of epochs to train (default: 100)')
-    parser.add_argument('--lr', type=float, default=0.00005,
+    parser.add_argument('--lr', type=float, default=0.0005,
                         help='learning rate (default: 0.005)')
     parser.add_argument('--weight_decay', type=float, default=0.0,
                         help='weight decay (default: 0.0)')
     parser.add_argument('--config', default='config.yaml', type=str,
                         help='config file path (default: config.yaml)')
-    parser.add_argument('--exp_id', default='optical_problems_contrast_change', type=str,
+    parser.add_argument('--exp_id', default='contrast_change', type=str,
                         help='exp id (default: bt)')
     parser.add_argument('--dataset_name', default='SOC', type=str,
                         help='dataset name (default: SOC)')

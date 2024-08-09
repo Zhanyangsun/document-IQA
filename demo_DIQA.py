@@ -5,7 +5,6 @@ from torch import nn
 import torch.nn.functional as F
 from torchvision.transforms.functional import to_tensor
 from torch.autograd import Variable as V
-from scipy.signal import convolve2d
 import cv2
 import os
 
@@ -18,7 +17,7 @@ class CNNDIQAnet(nn.Module):
         self.conv2 = nn.Conv2d(40, 80, 5)
         self.fc1 = nn.Linear(160, 1024)
         self.fc2 = nn.Linear(1024, 1024)
-        self.fc3 = nn.Linear(1024, 2)  # Changed to output 10-dimensional vector
+        self.fc3 = nn.Linear(1024, 2)  # Changed to output 2-dimensional vector
 
     def forward(self, x):
         x = x.view(-1, x.size(-3), x.size(-2), x.size(-1))
@@ -36,46 +35,35 @@ class CNNDIQAnet(nn.Module):
         return x
 
 
-def localNormalization(patch, P=3, Q=3, C=1):
-    """Apply local normalization to an image patch."""
-    kernel = np.ones((P, Q)) / (P * Q)
-    patch_mean = convolve2d(patch, kernel, boundary='symm', mode='same')
-    patch_sm = convolve2d(np.square(patch), kernel, boundary='symm', mode='same')
-    patch_std = np.sqrt(np.maximum(patch_sm - np.square(patch_mean), 0)) + C
-    patch_ln = (patch - patch_mean) / patch_std
-    return patch_ln
-
-
 def judgeAllOnesOrAllZeros(patch):
-    flag1 = np.all(patch == 255)
-    flag2 = np.all(patch == 0)
-    return flag1 or flag2
+    return np.all(patch == 255) or np.all(patch == 0)
 
 
-def patchSifting(im, patch_size=48, stride=48):
-    """Extract informative patches from an image."""
+def patchSifting(im, patch_size=350, stride=350):
     img = np.array(im).copy()
-    im1 = localNormalization(img)
-    im1 = Image.fromarray(im1)
-    _, im2 = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    w, h = im1.size
-    patches = ()
-    for i in range(0, h - stride, stride):
-        for j in range(0, w - stride, stride):
-            patch = im2[i:i + patch_size, j:j + patch_size]
+
+    if not img.flags.writeable:
+        img = np.copy(img)
+
+    h, w = img.shape
+    patches = []
+
+    for i in range(0, h - patch_size + 1, stride):
+        for j in range(0, w - patch_size + 1, stride):
+            patch = img[i:i + patch_size, j:j + patch_size]
             if not judgeAllOnesOrAllZeros(patch):
-                patch = to_tensor(im1.crop((j, i, j + patch_size, i + patch_size)))
-                patch = patch.float().unsqueeze(0)
-                patches = patches + (patch,)
+                patch_tensor = torch.from_numpy(patch).float().unsqueeze(0)  # Ensure shape [1, 48, 48]
+                patches.append(patch_tensor)
     return patches
 
 
 class Solver:
     def __init__(self):
         # Pre-trained model path
-        self.model_path = './checkpoints/CNNDIQA-SOC-EXPop-lr=0.0005.pth'
+        self.model_path = './checkpoints/CNNDIQA-SOC-EXPbinary_threshold_gaussian_blur-lr=0.0005.pth'
         # Initialize the model
         self.model = CNNDIQAnet()
+        self.factors = np.array([1.0,10.0])  # Scaling factors for each dimension
 
     def quality_assessment(self, img_path):
         # Load the pre-trained model
@@ -83,14 +71,15 @@ class Solver:
         im = Image.open(img_path).convert('L')
         patches = torch.stack(patchSifting(im))
         qs = self.model(patches)
-        qs = qs.mean(dim=0).detach().cpu().numpy()  # Detach the tensor before converting to NumPy
-        return qs
+        qs_mean = qs.mean(dim=0).detach().cpu().numpy()  # Compute mean for each dimension
+        qs_scaled = qs_mean / self.factors  # Apply inverse scaling
+        return qs_scaled
 
 
 if __name__ == '__main__':
-    base_path = './dataset'
-    folder_name = 'optical_problems'  # Specify the name for the folder containing images
-    output_file = 'optical_problems_quality_scores.txt'
+    base_path = './dataset1'
+    folder_name = 'binary_threshold_gaussian_blur'  # Specify the name for the folder containing images
+    output_file = 'binary_threshold_gaussian_blur_quality_scores.txt'
     solver = Solver()
 
     # Process all images in the specified folder

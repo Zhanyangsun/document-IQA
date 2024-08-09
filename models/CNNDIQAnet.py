@@ -11,7 +11,7 @@ class CNNDIQAnet(nn.Module):
         self.conv2 = nn.Conv2d(40, 80, 5)
         self.fc1 = nn.Linear(160, 1024)
         self.fc2 = nn.Linear(1024, 1024)
-        self.fc3 = nn.Linear(1024, 2)  # Change the output dimension to 5
+        self.fc3 = nn.Linear(1024, 1)  # Change the output dimension to 5
 
     def forward(self, x):
         x = x.view(-1, x.size(-3), x.size(-2), x.size(-1))

@@ -7,6 +7,7 @@ class DataInfoLoader:
     def __init__(self, dataset_name, config):
         self.config = config
         self.dataset_name = dataset_name
+        self.factor = 1.0  # Manually change the factor here as needed
 
         # Load ground truth data from the specified file
         gt_file_path = config[dataset_name]['gt_file_path']
@@ -22,7 +23,7 @@ class DataInfoLoader:
         Returns:
         - pandas.Series storing the GT for all images
         """
-        return pd.Series([item['distortion_level'] for item in self.gt_data])
+        return pd.Series([item['distortion_level'][0] * self.factor if isinstance(item['distortion_level'], list) else item['distortion_level'] * self.factor for item in self.gt_data])
 
     def get_img_name(self):
         return pd.Series([item['image'] for item in self.gt_data])
@@ -32,7 +33,7 @@ class DataInfoLoader:
 
     def get_img_path(self):
         """Get the image path for all images"""
-        return pd.Series([os.path.join(self.config[self.dataset_name]['root'], 'optical_problems_contrast_change', item['image']) for item in self.gt_data])
+        return pd.Series([os.path.join(self.config[self.dataset_name]['root'], 'contrast_change', item['image']) for item in self.gt_data])
 
 if __name__ == '__main__':
     with open('./config.yaml') as f:
@@ -41,4 +42,3 @@ if __name__ == '__main__':
     dil = DataInfoLoader(dataset_name, config)
     img_name = dil.get_img_name()
     print(img_name[2])
-
