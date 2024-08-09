@@ -1,39 +1,21 @@
 # DIQA_CNN
-PyTorch 0.4.1 implementation of the following paper:
-[Le Kang, et al. "A DEEP LEARNING APPROACH TO DOCUMENT IMAGE QUALITY ASSESSMENT." 2014 ICIP.](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.648.7747&rep=rep1&type=pdf)
+## Data
+The medical forms data are stored in data folder. All training data is generated based on these.
 
-The **SOC** dataset can be downloaded in [DIQA: Document Image Quality Assesment Datasets](https://lampsrv02.umiacs.umd.edu/projdb/project.php?id=73)
+## Piepeline (ensemble learning)
+### Generate training image (single noise)
+1. In data_prep_single_noise.py, edit the noise types in main function and run the script, noise type is a list like ['binary_threshold', 'gaussian_blur', 'optical_problems', 'rotation', 'contrast_change', 'pixelate', 'jitter', 'mean_shift', 'salt_and_pepper']. This will generate folders with the corresponding noise name under the dataset folder along with the ground truth.
+### Train model (single noise)
+2. Edit gt_file_path in config.yaml to be the ground truth path of the noise you want to use
+3. In DataInfoLoader.py >> DataInfoLoader class >> get_img_path function, the noise name is specified, change correspondingly.
+4. In main.py, you can specify the learning rate, batch size etc. Don't foeget to specify the exp_id. 
+5. Finally, run main.py. The model is saved under the checkpoint folder.
+### Generate training image (two noise)
+6. In data_prep.py, edit the noise types in main function and run the script, noise_type1 and noise_type2 should each be an element of ['binary_threshold', 'gaussian_blur', 'optical_problems', 'rotation', 'contrast_change', 'pixelate', 'jitter', 'mean_shift', 'salt_and_pepper']. This will generate a folder with the corresponding noise name under the dataset folder along with the ground truth. 
+7. Edit gt_file_path in config_ensemble.yaml to be the ground truth path of the noise you want to use
+8. In ensemble.py >> DataInfoLoader class >> get_img_path function, the noise name is specified, change correspondingly (name of the folder that stores the noisy images)
+9. In ensemble.py >> main method, you need to specify model_path_1, model_path_2
+10. Run ensemble.py, you can adjust any parameters you want. The factors parameter is used to scale the noise if you want.
 
-## Note
-Download the dataset and put all images in a directory and set this directory as `root` in 'config.yaml'
+** Other files are remnant from different testing endeavors, and do not influence the running of this pipeline
 
-The ground truth for the dataset has been pre-processed and saved as a excel file `SOC_gt.xlsx` stored in `./data/gt_files/SOC_gt.xlsx`
-
-The ground truth file contains:
-- img_name: the image name
-- img_set: the index of reference image from which the current degraded image generated.
-- acc_f: OCR accuracy by ABBYY Finereader
-- acc_t: OCR accuracy by Tesseract
-- acc_o: OCR accuracy by Omnipage
-- acc_avg: average accuracy of the three OCR engines above
-
-The creating details about this dataset:
-- [A Dataset for Quality Assessment of Camera Captured Document Images](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.359.6995&rep=rep1&type=pdf)
-
-## Training and validating
-```
-python main.py --batch_size=128 --epochs=500 --lr=0.001
-```
-Before training, the `root` in `config.yaml` must be specified.
-
-## demo_DIQA
-```
-python demo_DIQA.py
-```
-When a DIQA model has been trained, `demo_DIQA.py` can be used to predict the quality of a document image directly.
-
-Before running `demo_DIQA.py`, the `model_path` and `img_path` must be specified.
-
-## Requirements
-- PyTorch 0.4.1
-- [pytorch/ignite](https://github.com/pytorch/ignite)

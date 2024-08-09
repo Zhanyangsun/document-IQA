@@ -238,6 +238,6 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
 
     # Evaluate and save scores
-    # evaluate_images(dataset_name, config, model_path_1, model_path_2, output_json_path, factors, disable_gpu)
+    evaluate_images(dataset_name, config, model_path_1, model_path_2, output_json_path, factors, disable_gpu)
     # Train MLP with the factors applied
     train_mlp(output_json_path, config, dataset_name, mlp_model_save_path, batch_size, epochs, lr, weight_decay, factors, disable_gpu)
