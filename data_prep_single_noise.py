@@ -6,8 +6,6 @@ from PIL import Image
 import numpy as np
 import fitz  # PyMuPDF
 
-# Import the noise functions
-sys.path.append('../image_noise_adder')
 from effects import (
     add_salt_and_pepper_noise, apply_gaussian_blur, apply_binary_threshold,
     add_motion_blur, add_random_lines_to_greyscale,
